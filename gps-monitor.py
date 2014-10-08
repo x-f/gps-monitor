@@ -1,15 +1,11 @@
 #!/usr/bin/python2
 import serial
-import re
 import sys, os
-import demjson
 import time
+import config
 
-# GPS_PORT = "/dev/tty.usbserial-A50059SU"
-GPS_PORT = "/dev/ttyUSB1"
 
 from time import gmtime, strftime
-# timestr = strftime("%Y%m%d-%H%M%S", gmtime())
 timestr = strftime("%Y%m%d-%H%M", gmtime())
 LOG_FILE = "/run/shm/gps-monitor/gps-monitor-" + timestr + ".log"
 #LOG_FILE = "/run/shm/gps-monitor/gps-monitor-20141006-060001.log"
@@ -24,12 +20,11 @@ import os
 # print "os.getpid=", os.getpid()
 open("./monitor.pid", 'w').write(str(os.getpid()))
 
+GPS_PORT = config.GPS_PORT
 
-# readings: 285972
-avg_latitude = 57.1230760055
-avg_longitude = 24.1237303083
-avg_altitude = 123.330718042
-
+avg_latitude = config.avg_latitude
+avg_longitude = config.avg_longitude
+avg_altitude = config.avg_altitude
 
 #$GPTXT,01,01,02,u-blox ag - www.u-blox.com*50
 #$GPTXT,01,01,02,HW  UBX-G60xx  00040007 FF7FFFFFp*53
@@ -132,9 +127,6 @@ def gps_setup():
   #UBXcmd = bytearray.fromhex("B5 62 06 08 06 00 C8 00 01 00 01 00 DE 6A")
   gps_sendUBX(UBXcmd, len(UBXcmd))
   
-  #UBXcmd = bytearray.fromhex("b5 62 09 01 10 00 dc 0f 00 00 00 00 00 00 23 cc 21 00 00 00 02 10 27 0e")
-  #UBXcmd = bytearray.fromhex("b5 62 09 01 10 00 08 11 00 00 00 00 00 00 0f cc 21 00 00 00 02 11 42 4d")
-  #gps_sendUBX(UBXcmd, len(UBXcmd))
   
   # read all responses
   GPS = serial.Serial(GPS_PORT, 9600, timeout=1)
@@ -200,125 +192,125 @@ try:
       data_line = GPS.readline().strip()
       if (data_line.__len__() > 0):
           
-          nmeastr = data_line
-          #print nmeastr
-          if nmeastr[:3] == '$GP' and "*" in nmeastr: #and nmeastr[len(nmeastr)-2:] == '\r\n':
-            nmeatype = nmeastr[3:6]
-            # print nmeatype
-            if nmeatype == 'RMC' or nmeatype == 'GGA' or nmeatype == 'GSA':
-              tmp = nmeastr.split(',')
-              # print tmp
-              if nmeatype == 'RMC':
-                tmp_time = tmp[1]
-                # tmp_time = float(tmp_time)
-                tmp_t = tmp_time.split(".")
-                tmp_time = float(tmp_t[0])
-                tmp_time_10th = float("0." + tmp_t[1])
-                # string = "%06f" % tmp_time
-                string = "%06i" % tmp_time
-                string_10th = "%02f" % tmp_time_10th 
-                hours = string[0:2]
-                minutes = string[2:4]
-                seconds = string[4:6]
-                milliseconds = string_10th[2:3]
-                tmp_time = hours + ':' + minutes + ':' + seconds + '.' + milliseconds
-                gpsdata["time"] = tmp_time
+        nmeastr = data_line
+        #print nmeastr
+        if nmeastr[:3] == '$GP' and "*" in nmeastr: #and nmeastr[len(nmeastr)-2:] == '\r\n':
+          nmeatype = nmeastr[3:6]
+          # print nmeatype
+          if nmeatype == 'RMC' or nmeatype == 'GGA' or nmeatype == 'GSA':
+            tmp = nmeastr.split(',')
+            # print tmp
+            if nmeatype == 'RMC':
+              tmp_time = tmp[1]
+              # tmp_time = float(tmp_time)
+              tmp_t = tmp_time.split(".")
+              tmp_time = float(tmp_t[0])
+              tmp_time_10th = float("0." + tmp_t[1])
+              # string = "%06f" % tmp_time
+              string = "%06i" % tmp_time
+              string_10th = "%02f" % tmp_time_10th 
+              hours = string[0:2]
+              minutes = string[2:4]
+              seconds = string[4:6]
+              milliseconds = string_10th[2:3]
+              tmp_time = hours + ':' + minutes + ':' + seconds + '.' + milliseconds
+              gpsdata["time"] = tmp_time
 
-                tmp_date = tmp[9]
-                tmp_date = int(tmp_date)
-                string = "%06i" % tmp_date
-                day = string[0:2]
-                month = string[2:4]
-                year = 2000 + int(string[4:6])
-                tmp_date = str(year) + '-' + month + '-' + day
-                if year >= 2014:
-                  gpsdata["date"] = tmp_date
+              tmp_date = tmp[9]
+              tmp_date = int(tmp_date)
+              string = "%06i" % tmp_date
+              day = string[0:2]
+              month = string[2:4]
+              year = 2000 + int(string[4:6])
+              tmp_date = str(year) + '-' + month + '-' + day
+              if year >= 2014:
+                gpsdata["date"] = tmp_date
 
-                if tmp[3] != "":
-                  lat = gps_DegreeConvert(tmp[3])
-                  if tmp[4] == "S": lat *= -1
-                  gpsdata["latitude"] = round(lat, 7)
-                  lon = gps_DegreeConvert(tmp[5])
-                  if tmp[6] == "W": lon *= -1
-                  gpsdata["longitude"] = round(lon, 7)
+              if tmp[3] != "":
+                lat = gps_DegreeConvert(tmp[3])
+                if tmp[4] == "S": lat *= -1
+                gpsdata["latitude"] = round(lat, 7)
+                lon = gps_DegreeConvert(tmp[5])
+                if tmp[6] == "W": lon *= -1
+                gpsdata["longitude"] = round(lon, 7)
 
-                if tmp[7] != "":
-                  gpsdata['speed'] = round(float(tmp[7]) * 1.852)
-                if tmp[8] != "":
-                  gpsdata['course'] = round(float(tmp[8]))
+              if tmp[7] != "":
+                gpsdata['speed'] = round(float(tmp[7]) * 1.852)
+              if tmp[8] != "":
+                gpsdata['course'] = round(float(tmp[8]))
 
-              if nmeatype == 'GGA':
-                tmp_time = tmp[1]
-                # tmp_time = float(tmp_time)
-                tmp_t = tmp_time.split(".")
-                tmp_time = float(tmp_t[0])
-                tmp_time_10th = float("0." + tmp_t[1])
-                # string = "%06f" % tmp_time
-                string = "%06i" % tmp_time
-                string_10th = "%02f" % tmp_time_10th 
-                hours = string[0:2]
-                minutes = string[2:4]
-                seconds = string[4:6]
-                milliseconds = string_10th[2:3]
-                tmp_time = hours + ':' + minutes + ':' + seconds + '.' + milliseconds
-                gpsdata["time"] = tmp_time
+            if nmeatype == 'GGA':
+              tmp_time = tmp[1]
+              # tmp_time = float(tmp_time)
+              tmp_t = tmp_time.split(".")
+              tmp_time = float(tmp_t[0])
+              tmp_time_10th = float("0." + tmp_t[1])
+              # string = "%06f" % tmp_time
+              string = "%06i" % tmp_time
+              string_10th = "%02f" % tmp_time_10th 
+              hours = string[0:2]
+              minutes = string[2:4]
+              seconds = string[4:6]
+              milliseconds = string_10th[2:3]
+              tmp_time = hours + ':' + minutes + ':' + seconds + '.' + milliseconds
+              gpsdata["time"] = tmp_time
 
-                if tmp[2] != "":
-                  lat = gps_DegreeConvert(tmp[2])
-                  if tmp[3] == "S": lat *= -1
-                  gpsdata["latitude"] = round(lat, 7)
-                  lon = gps_DegreeConvert(tmp[4])
-                  if tmp[5] == "W": lon *= -1
-                  gpsdata["longitude"] = round(lon, 7)
+              if tmp[2] != "":
+                lat = gps_DegreeConvert(tmp[2])
+                if tmp[3] == "S": lat *= -1
+                gpsdata["latitude"] = round(lat, 7)
+                lon = gps_DegreeConvert(tmp[4])
+                if tmp[5] == "W": lon *= -1
+                gpsdata["longitude"] = round(lon, 7)
 
-                gpsdata['satellites'] = int(tmp[7])
-                if tmp[9] != "":
-                  gpsdata['altitude'] = float(tmp[9])
+              gpsdata['satellites'] = int(tmp[7])
+              if tmp[9] != "":
+                gpsdata['altitude'] = float(tmp[9])
 
-              if nmeatype == 'GSA':
-                gpsdata['fixq'] = int(tmp[2])
+            if nmeatype == 'GSA':
+              gpsdata['fixq'] = int(tmp[2])
 
 
-          if nmeatype == 'RMC':
-            # write packet
-            # 2014-10-03 10:43:31.6,56.9451545,24.1406073,7.6,5,0.000007,-0.000005,-9.3,0.783
+        if nmeatype == 'RMC':
+          # write packet
+          # 2014-10-03 10:43:31.6,57.123,24.123,123.6,5,0.000007,-0.000005,-9.3,0.783
 
-            if gpsdata['satellites'] > 4 and gpsdata['time'] != time_prev:
-              
-              gpsstr = ""
-              gpsstr += str(gpsdata['date']) + " " + str(gpsdata['time'])
-              gpsstr += "," + str(gpsdata['latitude']) + "," + str(gpsdata['longitude'])
-              gpsstr += "," + str(gpsdata['altitude'])
-              gpsstr += "," + str(gpsdata['satellites'])
-              
-              gpsstr += "," + str('{0:f}'.format(gpsdata['latitude'] - avg_latitude))
-              gpsstr += "," + str('{0:f}'.format(gpsdata['longitude'] - avg_longitude))
+          if gpsdata['satellites'] > 4 and gpsdata['time'] != time_prev:
+            
+            gpsstr = ""
+            gpsstr += str(gpsdata['date']) + " " + str(gpsdata['time'])
+            gpsstr += "," + str(gpsdata['latitude']) + "," + str(gpsdata['longitude'])
+            gpsstr += "," + str(gpsdata['altitude'])
+            gpsstr += "," + str(gpsdata['satellites'])
+            
+            gpsstr += "," + str('{0:f}'.format(gpsdata['latitude'] - avg_latitude))
+            gpsstr += "," + str('{0:f}'.format(gpsdata['longitude'] - avg_longitude))
 
-              dev_alt = round(gpsdata['altitude'] - avg_altitude, 1)
-              dev_pos = round(haversine(gpsdata['longitude'], gpsdata['latitude'], avg_longitude, avg_latitude), 2)
+            dev_alt = round(gpsdata['altitude'] - avg_altitude, 1)
+            dev_pos = round(haversine(gpsdata['longitude'], gpsdata['latitude'], avg_longitude, avg_latitude), 2)
 
-              gpsstr += "," + str(dev_alt)
-              gpsstr += "," + str(dev_pos)
-              
-              #print gpsdata
-              # print i, gpsstr
-              
-              time_prev = gpsdata['time']
-              total_lat += gpsdata['latitude']
-              total_lon += gpsdata['longitude']
-              total_alt += gpsdata['altitude']
-              total_sats += gpsdata['satellites']
-              if abs(dev_alt) > max_dev_alt:
-                max_dev_alt = abs(dev_alt)
-              if dev_pos > max_dev_pos:
-                max_dev_pos = dev_pos
-                            
-              gps_buffer += gpsstr + "\n"
-              if i % 5 == 0:
-                open(LOG_FILE, 'a').write(gps_buffer)
-                gps_buffer = ""
+            gpsstr += "," + str(dev_alt)
+            gpsstr += "," + str(dev_pos)
+            
+            #print gpsdata
+            # print i, gpsstr
+            
+            time_prev = gpsdata['time']
+            total_lat += gpsdata['latitude']
+            total_lon += gpsdata['longitude']
+            total_alt += gpsdata['altitude']
+            total_sats += gpsdata['satellites']
+            if abs(dev_alt) > max_dev_alt:
+              max_dev_alt = abs(dev_alt)
+            if dev_pos > max_dev_pos:
+              max_dev_pos = dev_pos
+                          
+            gps_buffer += gpsstr + "\n"
+            if i % 5 == 0:
+              open(LOG_FILE, 'a').write(gps_buffer)
+              gps_buffer = ""
 
-              i += 1
+            i += 1
 
           
     except Exception, e:
@@ -338,12 +330,6 @@ except KeyboardInterrupt:
     GPS.read(n)
   GPS.close()
 
-  # print "avg latitude:", total_lat/i
-  # print "avg longitude:", total_lon/i
-  # print "avg altitude:", total_alt/i
-  # print "readings:", i
-
-
   stats = ""
   stats += "started: " + timestr + "\n"
   stats += "readings: " + str(i) + "\n"
@@ -361,5 +347,4 @@ except KeyboardInterrupt:
   stats += "-------\n"
   open("./stats.txt", 'a').write(stats)
   
-  #GPS.close() # Close serial port
   sys.exit()
