@@ -1,6 +1,13 @@
 #!/bin/bash
 
-cd /home/x-f/sw/gps-monitor/
+GPSMONITOR_DIR=/home/x-f/sw/gps-monitor
+LOGFILE_DIR=/run/shm/gps-monitor
+
+#GPSMONITOR_DIR=/sw/gps-mon
+#LOGFILE_DIR=$GPSMONITOR_DIR/tmplogs
+#export TZ="UTC"
+
+cd $GPSMONITOR_DIR
 
 PREVIOUS_PID=`cat ./monitor.pid`
 if [ ! -z $PREVIOUS_PID ]; then
@@ -13,11 +20,11 @@ else
   echo "no PREVIOUS_PID"
 fi
 
-mkdir -p /run/shm/gps-monitor
+mkdir -p $LOGFILE_DIR
 
 TS=`date +%Y%m%d-%H`
 LOGFILENAME="gps-monitor-${TS}.log"
-LOGFILE="/run/shm/gps-monitor/${LOGFILENAME}"
+LOGFILE="$LOGFILE_DIR/$LOGFILENAME"
 # echo -n "ts="
 # echo $TS
 # echo -n "fn="
