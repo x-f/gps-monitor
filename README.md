@@ -1,6 +1,6 @@
 GPS monitor
 --
-A simple attempt to detect effects of CME impacts on Earth's ionosphere by monitoring GPS signals – for starters, just the wandering around of the reported position. Later GPS satellite signal monitoring might be added as well.  
+A simple attempt to detect effects of CME impacts on Earth's ionosphere by monitoring GPS signals – for starters, just the wandering around of the reported position. Later individual GPS satellite signal monitoring might be added as well.  
 Sample data – http://x-f.lv/dev/gps-monitor/  
 
 Launch with `./start-monitor.sh`  
