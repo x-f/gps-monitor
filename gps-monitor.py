@@ -2,6 +2,7 @@
 import serial
 import sys, os
 import time
+import signal
 import config
 
 
@@ -16,7 +17,6 @@ if len(sys.argv) > 1:
 print "LOG_FILE=" + LOG_FILE
 
 # save current process ID - to kill it on the next launch
-import os
 # print "os.getpid=", os.getpid()
 open("./monitor.pid", 'w').write(str(os.getpid()))
 
@@ -156,7 +156,38 @@ def haversine(lon1, lat1, lon2, lat2):
 
 # ------------------------------------------------------------------------
 
+# catch SIGINT, quit gracefully
+def sig_handler(signum, frame):
+  print " Quitting.."
+  # open("./monitor.pid", 'w').write("")
 
+  # read all responses
+  GPS = serial.Serial(GPS_PORT, 9600, timeout=1)
+  n = GPS.inWaiting()
+  if n:
+    GPS.read(n)
+  GPS.close()
+
+  stats = ""
+  stats += "started: " + timestr + "\n"
+  stats += "readings: " + str(i) + "\n"
+  stats += "avg_latitude: " + str(total_lat/i) + "\n"
+  stats += "avg_longitude: " + str(total_lon/i) + "\n"
+  stats += "avg_altitude: " + str(total_alt/i) + "\n"
+  stats += "avg_satellites: " + str(round(float(total_sats)/i, 2)) + "\n"
+  stats += "max position deviation: " + str(max_dev_pos) + "\n"
+  stats += "max altitude deviation: " + str(max_dev_alt) + "\n"
+  stats += "total lat: " + str(total_lat) + "\n"
+  stats += "total lon: " + str(total_lon) + "\n"
+  stats += "total alt: " + str(total_alt) + "\n"
+  if max_dev_pos > 30:
+    print stats
+  stats += "-------\n"
+  open("./stats.txt", 'a').write(stats)
+  
+  sys.exit()
+
+signal.signal(signal.SIGINT, sig_handler)
 
 
 total_lat = total_lon = total_alt = 0
@@ -275,7 +306,7 @@ try:
           # write packet
           # 2014-10-03 10:43:31.6,57.123,24.123,123.6,5,0.000007,-0.000005,-9.3,0.783
 
-          if gpsdata['satellites'] > 4 and gpsdata['time'] != time_prev:
+          if gpsdata['satellites'] >= 4 and gpsdata['time'] != time_prev:
             
             gpsstr = ""
             gpsstr += str(gpsdata['date']) + " " + str(gpsdata['time'])
@@ -319,32 +350,6 @@ try:
       print "------------"
       continue
 
-except KeyboardInterrupt:
-  print " Quitting.."
-  open("./monitor.pid", 'w').write("")
-
-  # read all responses
-  GPS = serial.Serial(GPS_PORT, 9600, timeout=1)
-  n = GPS.inWaiting()
-  if n:
-    GPS.read(n)
-  GPS.close()
-
-  stats = ""
-  stats += "started: " + timestr + "\n"
-  stats += "readings: " + str(i) + "\n"
-  stats += "avg_latitude: " + str(total_lat/i) + "\n"
-  stats += "avg_longitude: " + str(total_lon/i) + "\n"
-  stats += "avg_altitude: " + str(total_alt/i) + "\n"
-  stats += "avg_satellites: " + str(round(float(total_sats)/i, 2)) + "\n"
-  stats += "max position deviation: " + str(max_dev_pos) + "\n"
-  stats += "max altitude deviation: " + str(max_dev_alt) + "\n"
-  stats += "total lat: " + str(total_lat) + "\n"
-  stats += "total lon: " + str(total_lon) + "\n"
-  stats += "total alt: " + str(total_alt) + "\n"
-  if max_dev_pos > 20:
-    print stats
-  stats += "-------\n"
-  open("./stats.txt", 'a').write(stats)
-  
-  sys.exit()
+# except KeyboardInterrupt:
+except Exception, e:
+  print e
